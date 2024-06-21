@@ -166,7 +166,3 @@ if input_message:
 else:
     st.warning('Enter a message to see the prediction!')
 
-    
-# Ask for CSV upload if none is detected
-else:
-    st.warning('👈 Upload a CSV file or click *"Load example data"* to get started!')
