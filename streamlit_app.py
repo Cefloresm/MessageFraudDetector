@@ -1,247 +1,170 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
+import re
+import nltk
+from nltk.corpus import stopwords
+from nltk.tokenize import word_tokenize
+from sklearn.feature_extraction.text import CountVectorizer
+from pycaret.classification import *
 from sklearn.model_selection import train_test_split
-from sklearn.ensemble import RandomForestRegressor
-from sklearn.metrics import mean_squared_error, r2_score
-import altair as alt
+from pycaret.classification import setup
 import time
-import zipfile
 
 # Page title
-st.set_page_config(page_title='ML Model Building', page_icon='🤖')
-st.title('🤖 ML Model Building')
+st.set_page_config(page_title='ElderGuard- Message Fraud detector for the elderly', page_icon='👴🏼👵🏾📱')
+st.title('👴🏼👵🏾📱 ElderGuard- Message Fraud detector for the elderly')
 
-with st.expander('About this app'):
-  st.markdown('**What can this app do?**')
-  st.info('This app allow users to build a machine learning (ML) model in an end-to-end workflow. Particularly, this encompasses data upload, data pre-processing, ML model building and post-model analysis.')
+with st.expander('About this project: "Why the elderly?"'):
+  st.markdown('**How bad is this issue?**')
+  st.warning('''
+1) In 2023, the FBI's Internet Crime Complaint Center (IC3) total losses reported to the IC3 
+by those over the age of 60 topped $3.4 billion, an almost 11% increase in
+reported losses from 2022.
+2) In Spain, the number of fraud complaints to the Bank of Spain doubled in 2022, reaching 10,361 cases of fraud.
+3) In Spain, one in three people over 65 has been a victim of at least one cybercrime.
+''' )
 
-  st.markdown('**How to use the app?**')
-  st.warning('To engage with the app, go to the sidebar and 1. Select a data set and 2. Adjust the model parameters by adjusting the various slider widgets. As a result, this would initiate the ML model building process, display the model results as well as allowing users to download the generated models and accompanying data.')
+  st.markdown('**What is our target segment?**')
+  st.info('''
+Our targeted users represent the elderly with +65 years of age , who balance technology use with
+traditional banking needs and have significant interaction with family and community activities.
 
-  st.markdown('**Under the hood**')
-  st.markdown('Data sets:')
-  st.code('''- Drug solubility data set
-  ''', language='markdown')
+Tech-Savvy and Non-Tech savvy users are considered, given that even with sufficient knowledge, anyone can be vulnerable 
+while having their guard down. 
+
+Look at Ramón Artal, 71 years old and resident of Sant Feliu de Llobregat (Barcelona), 
+who has a background in engineering, is a tech-savvy person and has been close to falling victim to a digital scam
+  ''')
+
+st.markdown('**Our solution**')
+st.info('''
+Our value proposition is clear: elders and small banks/insurers can significantly reduce fraud-related losses and
+enhance customer trust by implementing our fraud detection algorithm. This solution is cost-
+effective and easy to integrate, offering robust protection against fraudulent transactions.
+''' )
+
+ # st.markdown('**Under the hood**')
+ # st.markdown('Data sets:')
+ # st.code('''- Drug solubility data set
+ # ''', language='markdown')
   
-  st.markdown('Libraries used:')
-  st.code('''- Pandas for data wrangling
-- Scikit-learn for building a machine learning model
-- Altair for chart creation
-- Streamlit for user interface
-  ''', language='markdown')
+ # st.markdown('Libraries used:')
+ # st.code('''- Pandas for data wrangling
+#- Scikit-learn for building a machine learning model
+#- Altair for chart creation
+#- Streamlit for user interface
+#  ''', language='markdown')
 
+st.markdown('*Try it out yourself!*')
+input_message= st.text_input('Message')
+st.markdown('**Result**')
 
-# Sidebar for accepting input parameters
-with st.sidebar:
-    # Load data
-    st.header('1.1. Input data')
-
-    st.markdown('**1. Use custom data**')
-    uploaded_file = st.file_uploader("Upload a CSV file", type=["csv"])
-    if uploaded_file is not None:
-        df = pd.read_csv(uploaded_file, index_col=False)
-      
-    # Download example data
-    @st.cache_data
-    def convert_df(input_df):
-        return input_df.to_csv(index=False).encode('utf-8')
-    example_csv = pd.read_csv('https://raw.githubusercontent.com/dataprofessor/data/master/delaney_solubility_with_descriptors.csv')
-    csv = convert_df(example_csv)
-    st.download_button(
-        label="Download example CSV",
-        data=csv,
-        file_name='delaney_solubility_with_descriptors.csv',
-        mime='text/csv',
-    )
-
-    # Select example data
-    st.markdown('**1.2. Use example data**')
-    example_data = st.toggle('Load example data')
-    if example_data:
-        df = pd.read_csv('https://raw.githubusercontent.com/dataprofessor/data/master/delaney_solubility_with_descriptors.csv')
-
-    st.header('2. Set Parameters')
-    parameter_split_size = st.slider('Data split ratio (% for Training Set)', 10, 90, 80, 5)
-
-    st.subheader('2.1. Learning Parameters')
-    with st.expander('See parameters'):
-        parameter_n_estimators = st.slider('Number of estimators (n_estimators)', 0, 1000, 100, 100)
-        parameter_max_features = st.select_slider('Max features (max_features)', options=['all', 'sqrt', 'log2'])
-        parameter_min_samples_split = st.slider('Minimum number of samples required to split an internal node (min_samples_split)', 2, 10, 2, 1)
-        parameter_min_samples_leaf = st.slider('Minimum number of samples required to be at a leaf node (min_samples_leaf)', 1, 10, 2, 1)
-
-    st.subheader('2.2. General Parameters')
-    with st.expander('See parameters', expanded=False):
-        parameter_random_state = st.slider('Seed number (random_state)', 0, 1000, 42, 1)
-        parameter_criterion = st.select_slider('Performance measure (criterion)', options=['squared_error', 'absolute_error', 'friedman_mse'])
-        parameter_bootstrap = st.select_slider('Bootstrap samples when building trees (bootstrap)', options=[True, False])
-        parameter_oob_score = st.select_slider('Whether to use out-of-bag samples to estimate the R^2 on unseen data (oob_score)', options=[False, True])
-
-    sleep_time = st.slider('Sleep time', 0, 3, 0)
+sleep_time= 1
 
 # Initiate the model building process
-if uploaded_file or example_data: 
+if input_message: 
     with st.status("Running ...", expanded=True) as status:
-    
         st.write("Loading data ...")
         time.sleep(sleep_time)
 
-        st.write("Preparing data ...")
+        st.write("Cleaning text: tokenizing, removing punctuations and removing stopwords ...")
         time.sleep(sleep_time)
-        X = df.iloc[:,:-1]
-        y = df.iloc[:,-1]
-            
-        st.write("Splitting data ...")
-        time.sleep(sleep_time)
-        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=(100-parameter_split_size)/100, random_state=parameter_random_state)
-    
-        st.write("Model training ...")
-        time.sleep(sleep_time)
+        # Descargar stopwords y tokenizer de NLTK
+        nltk.download('stopwords')
+        nltk.download('punkt')
 
-        if parameter_max_features == 'all':
-            parameter_max_features = None
-            parameter_max_features_metric = X.shape[1]
-        
-        rf = RandomForestRegressor(
-                n_estimators=parameter_n_estimators,
-                max_features=parameter_max_features,
-                min_samples_split=parameter_min_samples_split,
-                min_samples_leaf=parameter_min_samples_leaf,
-                random_state=parameter_random_state,
-                criterion=parameter_criterion,
-                bootstrap=parameter_bootstrap,
-                oob_score=parameter_oob_score)
-        rf.fit(X_train, y_train)
+        def clean_text(text):
+            # Remove punctuations and convert to lowercase
+            text = re.sub(r'[^\w\s]', '', text.lower())
+
+            # Tokenize the text
+            tokens = word_tokenize(text)
+
+            # Remove stopwords
+            tokens = [word for word in tokens if word not in stopwords.words('english')]
+
+            return ' '.join(tokens)
+
+        # Load the column names from the file
+        with open('column_names.txt', 'r') as file:
+            column_names = [line.strip() for line in file]
+
+        # Clean the email message
+        cleaned_message = clean_text(input_message)
+
+        # Create a DataFrame from the cleaned message
+        data = {'Message': [cleaned_message]}
+        df = pd.DataFrame(data)
+            
+        st.write("Inserting in word database (Using Count Vectorizer)...")
+        #Applying Count Vectorizer
+        cv = CountVectorizer(stop_words='english')
+        dtm = cv.fit_transform(df['Message'])
+
+        # Convert the document-term matrix to a DataFrame for better visualization
+        dtm_df = pd.DataFrame(dtm.toarray(), columns=cv.get_feature_names_out())
+
+        # Ensure new_dtm_df has the same columns as the original training dataset
+        for col in column_names:
+            if col not in dtm_df.columns:
+                dtm_df[col] = 0
+
+        # Reorder columns to match the original training dataset
+        dtm_df = dtm_df[column_names]
+
+        st.write("Loading machine learning model ...")
+        # Load the model
+        Fraud_Detector = load_model('Msg_Fraud_Detector')
         
         st.write("Applying model to make predictions ...")
-        time.sleep(sleep_time)
-        y_train_pred = rf.predict(X_train)
-        y_test_pred = rf.predict(X_test)
-            
-        st.write("Evaluating performance metrics ...")
-        time.sleep(sleep_time)
-        train_mse = mean_squared_error(y_train, y_train_pred)
-        train_r2 = r2_score(y_train, y_train_pred)
-        test_mse = mean_squared_error(y_test, y_test_pred)
-        test_r2 = r2_score(y_test, y_test_pred)
-        
-        st.write("Displaying performance metrics ...")
-        time.sleep(sleep_time)
-        parameter_criterion_string = ' '.join([x.capitalize() for x in parameter_criterion.split('_')])
-        #if 'Mse' in parameter_criterion_string:
-        #    parameter_criterion_string = parameter_criterion_string.replace('Mse', 'MSE')
-        rf_results = pd.DataFrame(['Random forest', train_mse, train_r2, test_mse, test_r2]).transpose()
-        rf_results.columns = ['Method', f'Training {parameter_criterion_string}', 'Training R2', f'Test {parameter_criterion_string}', 'Test R2']
-        # Convert objects to numerics
-        for col in rf_results.columns:
-            rf_results[col] = pd.to_numeric(rf_results[col], errors='ignore')
-        # Round to 3 digits
-        rf_results = rf_results.round(3)
-        
+        # Make predictions
+        predictions = predict_model(Fraud_Detector, data=dtm_df)
+
     status.update(label="Status", state="complete", expanded=False)
 
-    # Display data info
-    st.header('Input data', divider='rainbow')
-    col = st.columns(4)
-    col[0].metric(label="No. of samples", value=X.shape[0], delta="")
-    col[1].metric(label="No. of X variables", value=X.shape[1], delta="")
-    col[2].metric(label="No. of Training samples", value=X_train.shape[0], delta="")
-    col[3].metric(label="No. of Test samples", value=X_test.shape[0], delta="")
-    
-    with st.expander('Initial dataset', expanded=True):
-        st.dataframe(df, height=210, use_container_width=True)
-    with st.expander('Train split', expanded=False):
-        train_col = st.columns((3,1))
-        with train_col[0]:
-            st.markdown('**X**')
-            st.dataframe(X_train, height=210, hide_index=True, use_container_width=True)
-        with train_col[1]:
-            st.markdown('**y**')
-            st.dataframe(y_train, height=210, hide_index=True, use_container_width=True)
-    with st.expander('Test split', expanded=False):
-        test_col = st.columns((3,1))
-        with test_col[0]:
-            st.markdown('**X**')
-            st.dataframe(X_test, height=210, hide_index=True, use_container_width=True)
-        with test_col[1]:
-            st.markdown('**y**')
-            st.dataframe(y_test, height=210, hide_index=True, use_container_width=True)
+    if predictions['prediction_label'].iloc[0] == 'fraud':
+        st.markdown("🚨 **ALERT: This email has a HIGH probability of being fraudulent.**🚨")
+        st.markdown("""
+        **Suggested Action:**
+        1. Do not click on any links or download any attachments in the message.
+        2. Do not provide any personal information or financial details.
+        3. Delete the message from your inbox.
+        """)
+    else:
+        st.markdown("✅ **This email is probably safe, but remember to always check the following:**")
+        st.markdown("""
+        **Safety Reminders:**
+        1. Always verify the sender's email address.
+        2. Look for signs of phishing, such as poor grammar or suspicious links.
+        3. Be cautious of unsolicited messages requesting personal or financial information.
+        """)
 
-    # Zip dataset files
-    df.to_csv('dataset.csv', index=False)
-    X_train.to_csv('X_train.csv', index=False)
-    y_train.to_csv('y_train.csv', index=False)
-    X_test.to_csv('X_test.csv', index=False)
-    y_test.to_csv('y_test.csv', index=False)
-    
-    list_files = ['dataset.csv', 'X_train.csv', 'y_train.csv', 'X_test.csv', 'y_test.csv']
-    with zipfile.ZipFile('dataset.zip', 'w') as zipF:
-        for file in list_files:
-            zipF.write(file, compress_type=zipfile.ZIP_DEFLATED)
+    moreinfo = st.radio("Do you want to run other tests just to be completely sure?", ("Yes", "No"))
+    if moreinfo == 'Yes':
+        # Display a radio button widget
+        st.markdown("**If it still seems suspicious, let's check some other aspects:**")
+        selection1 = st.radio("Does this message have an official link? For example: ups.com (If they claim they are from UPS)", ("Yes", "No"))
 
-    with open('dataset.zip', 'rb') as datazip:
-        btn = st.download_button(
-                label='Download ZIP',
-                data=datazip,
-                file_name="dataset.zip",
-                mime="application/octet-stream"
-                )
-    
-    # Display model parameters
-    st.header('Model parameters', divider='rainbow')
-    parameters_col = st.columns(3)
-    parameters_col[0].metric(label="Data split ratio (% for Training Set)", value=parameter_split_size, delta="")
-    parameters_col[1].metric(label="Number of estimators (n_estimators)", value=parameter_n_estimators, delta="")
-    parameters_col[2].metric(label="Max features (max_features)", value=parameter_max_features_metric, delta="")
-    
-    # Display feature importance plot
-    importances = rf.feature_importances_
-    feature_names = list(X.columns)
-    forest_importances = pd.Series(importances, index=feature_names)
-    df_importance = forest_importances.reset_index().rename(columns={'index': 'feature', 0: 'value'})
-    
-    bars = alt.Chart(df_importance).mark_bar(size=40).encode(
-             x='value:Q',
-             y=alt.Y('feature:N', sort='-x')
-           ).properties(height=250)
-
-    performance_col = st.columns((2, 0.2, 3))
-    with performance_col[0]:
-        st.header('Model performance', divider='rainbow')
-        st.dataframe(rf_results.T.reset_index().rename(columns={'index': 'Parameter', 0: 'Value'}))
-    with performance_col[2]:
-        st.header('Feature importance', divider='rainbow')
-        st.altair_chart(bars, theme='streamlit', use_container_width=True)
-
-    # Prediction results
-    st.header('Prediction results', divider='rainbow')
-    s_y_train = pd.Series(y_train, name='actual').reset_index(drop=True)
-    s_y_train_pred = pd.Series(y_train_pred, name='predicted').reset_index(drop=True)
-    df_train = pd.DataFrame(data=[s_y_train, s_y_train_pred], index=None).T
-    df_train['class'] = 'train'
+        # Use the selected option
+        if selection1 == "Yes":
+            st.write("✅ Great, It seems to be safe!")
+        else:
+            st.write("🚨 If it is not an official link, we would not advise clicking it. It is better to manually search any information in the official website by yourself if needed.")
         
-    s_y_test = pd.Series(y_test, name='actual').reset_index(drop=True)
-    s_y_test_pred = pd.Series(y_test_pred, name='predicted').reset_index(drop=True)
-    df_test = pd.DataFrame(data=[s_y_test, s_y_test_pred], index=None).T
-    df_test['class'] = 'test'
-    
-    df_prediction = pd.concat([df_train, df_test], axis=0)
-    
-    prediction_col = st.columns((2, 0.2, 3))
-    
-    # Display dataframe
-    with prediction_col[0]:
-        st.dataframe(df_prediction, height=320, use_container_width=True)
+        selection2 = st.radio("Does this message have an official number? For example: You can check UPS's official number in Google to see if it matches this message", ("Yes", "No"))
+        # Use the selected option
+        if selection2 == "Yes":
+            st.write("✅ Great, It seems to be safe!")
+        else:
+            st.write("🚨 If it is not an official number, we would advise calling official numbers by yourself if needed.")
+    else:
+        st.markdown("✅ **Perfect! Feel free to continue using our model!**")
 
-    # Display scatter plot of actual vs predicted values
-    with prediction_col[2]:
-        scatter = alt.Chart(df_prediction).mark_circle(size=60).encode(
-                        x='actual',
-                        y='predicted',
-                        color='class'
-                  )
-        st.altair_chart(scatter, theme='streamlit', use_container_width=True)
+
+# Ask for text input if none is entered
+else:
+    st.warning('Enter a message to see the prediction!')
 
     
 # Ask for CSV upload if none is detected
