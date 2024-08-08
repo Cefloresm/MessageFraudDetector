@@ -6,3 +6,4 @@ streamlit==1.29.0
 pycaret
 altair>=4.0
 nltk
+llvmlite
