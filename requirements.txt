@@ -5,3 +5,4 @@ numpy==1.19.5
 pycaret==2.3.3
 altair>=4.0
 nltk
+llvmlite
