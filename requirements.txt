@@ -4,3 +4,7 @@ scikit-learn
 altair>=4.0
 nltk
 pycaret
+sklearn.feature_extraction.text 
+pycaret.classification 
+sklearn.model_selection 
+time
