@@ -6,9 +6,9 @@ import nltk
 from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize
 from sklearn.feature_extraction.text import CountVectorizer
-
+from pycaret.classification import *
 from sklearn.model_selection import train_test_split
-
+from pycaret.classification import setup
 import time
 
 # Page title
