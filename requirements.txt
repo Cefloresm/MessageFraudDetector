@@ -2,6 +2,6 @@ streamlit
 pandas==1.3.3
 numpy==1.19.5
 scikit-learn==0.23.2
-pycaret==2.3.6
+pycaret
 nltk==3.5
 altair==4.1.0
