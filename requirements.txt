@@ -1,15 +1,12 @@
-#streamlit
-#pandas==1.3.3
-#numpy==1.19.5
-#scikit-learn==0.23.2
-#pycaret==2.3.10
-#nltk==3.5
-#altair==4.1.0
+streamlit==1.25.0         # Latest version compatible with Python 3.11
+pandas==1.5.3             # Compatible with PyCaret and Python 3.11
+numpy==1.23.5             # Compatible with Python 3.11
+scikit-learn==1.2.2       # Compatible with PyCaret and Python 3.11
+pycaret==3.0.4            # Latest stable version supporting Python 3.11
+nltk==3.7                 # Compatible with Python 3.11
+altair==5.0.0             # Compatible with Python 3.11
+joblib==1.2.0             # Required for model loading with PyCaret
+scipy==1.9.3              # Required by PyCaret and scikit-learn
+xgboost==1.7.6            # Commonly used with PyCaret
+lightgbm==3.3.2           # Commonly used with PyCaret
 
-
-scikit-learn==0.23.2
-pandas==1.1.5
-numpy==1.19.5
-pycaret==2.3.10
-nltk==3.5
-altair==4.1.0
