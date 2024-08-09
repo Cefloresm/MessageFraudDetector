@@ -106,7 +106,7 @@ if input_message:
         dtm = cv.fit_transform(df['Message'])
 
         # Convert the document-term matrix to a DataFrame for better visualization
-        dtm_df = pd.DataFrame(dtm.toarray(), columns=cv.get_feature_names_out())
+        dtm_df = pd.DataFrame(dtm.toarray(), columns=cv.get_feature_names())
 
         # Ensure new_dtm_df has the same columns as the original training dataset
         for col in column_names:
