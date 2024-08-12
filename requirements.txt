@@ -1,6 +1,6 @@
 streamlit==1.25.0
 pandas==1.5.3
-numpy==1.24.4            # Updated to satisfy plotly-resampler requirements
+numpy==1.22.4
 scikit-learn==1.2.2
 pycaret==3.0.4
 nltk==3.7
@@ -9,4 +9,3 @@ joblib==1.2.0
 scipy==1.9.3
 xgboost==1.7.6
 lightgbm==3.3.2
-numba==0.56.4            # Compatible with Python 3.11
