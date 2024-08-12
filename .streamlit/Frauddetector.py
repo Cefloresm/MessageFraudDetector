@@ -10,6 +10,7 @@ from sklearn.model_selection import train_test_split
 from pycaret.classification import *
 from pycaret.classification import setup
 import time
+import pickle
 
 # Page title
 st.set_page_config(page_title='ElderGuard- Message Fraud detector for the elderly', page_icon='👴🏼👵🏾📱')
